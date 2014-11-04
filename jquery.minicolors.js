@@ -1,9 +1,7 @@
 /*
  * jQuery MiniColors: A tiny color picker built on jQuery
  *
- * Copyright: Cory LaViska for A Beautiful Site, LLC.
- *
- * Contributions and bug reports: https://github.com/claviska/jquery-minicolors
+ * Copyright Cory LaViska for A Beautiful Site, LLC. (http://www.abeautifulsite.net/)
  *
  * Licensed under the MIT license: http://opensource.org/licenses/MIT
  *
@@ -18,7 +16,6 @@ if(jQuery) (function($) {
 			change: null,
 			changeDelay: 0,
 			control: 'hue',
-			dataUris: true,
 			defaultValue: '',
 			hide: null,
 			hideSpeed: 100,
@@ -28,7 +25,8 @@ if(jQuery) (function($) {
 			position: 'bottom left',
 			show: null,
 			showSpeed: 100,
-			theme: 'default'
+			theme: 'default',
+			palette: []
 		}
 	};
 
@@ -121,8 +119,11 @@ if(jQuery) (function($) {
 	// Initialize input elements
 	function init(input, settings) {
 
+
 		var minicolors = $('<div class="minicolors" />'),
-			defaults = $.minicolors.defaults;
+			defaults = $.minicolors.defaults,
+			panelClasses = [],
+			paletteEl = '';
 
 		// Do nothing if already initialized
 		if( input.data('minicolors-initialized') ) return;
@@ -133,16 +134,31 @@ if(jQuery) (function($) {
 		// The wrapper
 		minicolors
 			.addClass('minicolors-theme-' + settings.theme)
-			.toggleClass('minicolors-with-opacity', settings.opacity)
-			.toggleClass('minicolors-no-data-uris', settings.dataUris !== true);
+			.toggleClass('minicolors-with-opacity', settings.opacity);
+
+		if( settings.palette.length > 0 ) {
+			settings.palette.splice(settings.opacity ? 10 : 9);
+			paletteEl = '<div class="minicolors-palette">';
+
+			for(var i = 0; i < settings.palette.length; i++) {
+				paletteEl += '<div class="minicolors-bucket" style="background:' + settings.palette[i] + '"></div>';
+			}
+
+			paletteEl += '</div>';
+			if( settings.position.indexOf('top') > -1 ) {
+				settings.position = settings.position.replace('top', 'top-palette');
+			}
+
+			panelClasses.push('minicolors-panel-palette');
+		}
 
 		// Custom positioning
 		if( settings.position !== undefined ) {
 			$.each(settings.position.split(' '), function() {
 				minicolors.addClass('minicolors-position-' + this);
 			});
-		}
 
+		}
 		// The input
 		input
 			.addClass('minicolors-input')
@@ -151,14 +167,15 @@ if(jQuery) (function($) {
 			.prop('size', 7)
 			.wrap(minicolors)
 			.after(
-				'<div class="minicolors-panel minicolors-slider-' + settings.control + '">' +
-					'<div class="minicolors-slider minicolors-sprite">' +
+				'<div class="minicolors-panel ' + panelClasses.join(' ') + ' minicolors-slider-' + settings.control + '">' +
+					paletteEl +
+					'<div class="minicolors-slider">' +
 						'<div class="minicolors-picker"></div>' +
 					'</div>' +
-					'<div class="minicolors-opacity-slider minicolors-sprite">' +
+					'<div class="minicolors-opacity-slider">' +
 						'<div class="minicolors-picker"></div>' +
 					'</div>' +
-					'<div class="minicolors-grid minicolors-sprite">' +
+					'<div class="minicolors-grid">' +
 						'<div class="minicolors-grid-inner"></div>' +
 						'<div class="minicolors-picker"><div></div></div>' +
 					'</div>' +
@@ -167,7 +184,7 @@ if(jQuery) (function($) {
 
 		// The swatch
 		if( !settings.inline ) {
-			input.after('<span class="minicolors-swatch minicolors-sprite"><span class="minicolors-swatch-color"></span></span>');
+			input.after('<span class="minicolors-swatch"><span class="minicolors-swatch-color"></span></span>');
 			input.next('.minicolors-swatch').on('click', function(event) {
 				event.preventDefault();
 				input.focus();
@@ -287,6 +304,11 @@ if(jQuery) (function($) {
 			y = Math.round(y);
 		}
 
+		if( target.is('.minicolors-bucket') ) {
+			updateFromControl(input, target);
+			updateFromInput(input, true);
+		}
+
 		// Move the picker
 		if( target.is('.minicolors-grid') ) {
 			picker
@@ -351,6 +373,10 @@ if(jQuery) (function($) {
 			sliderPos = getCoords(sliderPicker, slider),
 			opacityPos = getCoords(opacityPicker, opacitySlider);
 
+		if( target.is('.minicolors-bucket') ) {
+			hex = settings.palette[ target.index() ];
+			input.val( convertCase(hex, settings.letterCase) );
+		}
 		// Handle colors
 		if( target.is('.minicolors-grid, .minicolors-slider') ) {
 
@@ -770,7 +796,7 @@ if(jQuery) (function($) {
 			}
 		})
 		// Start moving
-		.on('mousedown.minicolors touchstart.minicolors', '.minicolors-grid, .minicolors-slider, .minicolors-opacity-slider', function(event) {
+		.on('mousedown.minicolors touchstart.minicolors', '.minicolors-grid, .minicolors-slider, .minicolors-opacity-slider, .minicolors-bucket', function(event) {
 			var target = $(this);
 			event.preventDefault();
 			$(document).data('minicolors-target', target);
